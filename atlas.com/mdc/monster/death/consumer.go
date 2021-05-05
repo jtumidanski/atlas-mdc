@@ -2,12 +2,13 @@ package death
 
 import (
 	"atlas-mdc/kafka/handler"
+	"atlas-mdc/monster"
 	"atlas-mdc/monster/drop"
 	"github.com/sirupsen/logrus"
 )
 
 type DamageEntry struct {
-	CharacterId uint32 `json:"characterId"`
+	CharacterId uint32 `json:"character"`
 	Damage      uint64 `json:"damage"`
 }
 
@@ -32,8 +33,17 @@ func MonsterKilledEventCreator() handler.EmptyEventCreator {
 func HandleMonsterKilledEvent() handler.EventHandler {
 	return func(l logrus.FieldLogger, e interface{}) {
 		if event, ok := e.(*MonsterKilledEvent); ok {
-			drop.CreateDrops(l)(event.WorldId, event.ChannelId, event.MapId, event.UniqueId, event.MonsterId, event.X, event.Y, event.KillerId)
+			if m, ok := monster.GetMonster(l)(event.MonsterId); ok {
+				var damageEntries = make([]*monster.DamageEntry, 0)
+				for _, entry := range event.DamageEntries {
+					damageEntries = append(damageEntries, monster.NewDamageEntry(entry.CharacterId, entry.Damage))
+				}
+
+				drop.CreateDrops(l)(event.WorldId, event.ChannelId, event.MapId, event.UniqueId, event.MonsterId, event.X, event.Y, event.KillerId)
+				monster.DistributeExperience(l)(event.WorldId, event.ChannelId, event.MapId, m, damageEntries)
+			}
 		} else {
+			l.Errorf("Unable to cast event provided to handler")
 		}
 	}
 }
