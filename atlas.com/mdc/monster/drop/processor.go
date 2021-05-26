@@ -80,7 +80,8 @@ func evaluateSuccess(killerId uint32, drop Model) bool {
 	// buff rate  (cards)
 
 	//TODO evaluate card rate for killer, whether it's meso or drop.
-	chance := int32(math.Min(float64(drop.Chance()*20), math.MaxUint32))
+	chance := int32(math.Min(float64(drop.Chance()), math.MaxUint32))
+	chance *= 1000
 	return rand.Int31n(999999) < chance
 }
 
@@ -120,6 +121,7 @@ func spawnMeso(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId ui
 	return func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
 		mesos := uint32(rand.Int31n(int32(drop.MaximumQuantity()-drop.MinimumQuantity()))) + drop.MinimumQuantity()
 		//TODO apply characters meso buff.
+		mesos *= 20
 		spawnDrop(l)(worldId, channelId, mapId, 0, 0, mesos, posX, posY, x, y, uniqueId, killerId, false, dropType)
 	}
 }
