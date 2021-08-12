@@ -9,7 +9,7 @@ import (
 
 func GetMonster(l logrus.FieldLogger) func(monsterId uint32) (*Model, bool) {
 	return func(monsterId uint32) (*Model, bool) {
-		resp, err := Monster().GetById(monsterId)
+		resp, err := requestById(l)(monsterId)
 		if err != nil {
 			l.WithError(err).Errorf("Retrieving monster %d information.", monsterId)
 			return nil, false
@@ -30,7 +30,7 @@ func DistributeExperience(l logrus.FieldLogger) func(worldId byte, channelId byt
 		d := produceDistribution(l)(mapId, m, entries)
 		for k, v := range d.Solo() {
 			experience := float64(v) * d.ExperiencePerDamage()
-			c, err := character.GetCharacterById(k)
+			c, err := character.GetCharacterById(l)(k)
 			if err != nil {
 				l.WithError(err).Errorf("Unable to locate character %d whose for distributing experience from monster death.", k)
 			} else {

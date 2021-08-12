@@ -36,7 +36,7 @@ func CreateDrops(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId 
 
 func GetDropsForMonster(l logrus.FieldLogger) func(monsterId uint32) ([]Model, error) {
 	return func(monsterId uint32) ([]Model, error) {
-		rest, err := getByMonsterId(monsterId)
+		rest, err := requestByMonsterId(l)(monsterId)
 		if err != nil {
 			return nil, err
 		}

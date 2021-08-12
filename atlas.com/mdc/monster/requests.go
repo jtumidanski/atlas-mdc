@@ -3,6 +3,7 @@ package monster
 import (
 	"atlas-mdc/rest/requests"
 	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -12,18 +13,13 @@ const (
 	monsterResource             = monstersResource + "/%d"
 )
 
-var Monster = func() *monster {
-	return &monster{}
-}
-
-type monster struct {
-}
-
-func (m *monster) GetById(monsterId uint32) (*MonsterDataContainer, error) {
-	ar := &MonsterDataContainer{}
-	err := requests.Get(fmt.Sprintf(monsterResource, monsterId), ar)
-	if err != nil {
-		return nil, err
+func requestById(l logrus.FieldLogger) func(monsterId uint32) (*MonsterDataContainer, error) {
+	return func(monsterId uint32) (*MonsterDataContainer, error) {
+		ar := &MonsterDataContainer{}
+		err := requests.Get(l)(fmt.Sprintf(monsterResource, monsterId), ar)
+		if err != nil {
+			return nil, err
+		}
+		return ar, nil
 	}
-	return ar, nil
 }

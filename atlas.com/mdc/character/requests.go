@@ -3,6 +3,7 @@ package character
 import (
 	"atlas-mdc/rest/requests"
 	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -12,11 +13,13 @@ const (
 	charactersById                 = charactersResource + "%d"
 )
 
-func requestCharacter(characterId uint32) (*dataContainer, error) {
-	ar := &dataContainer{}
-	err := requests.Get(fmt.Sprintf(charactersById, characterId), ar)
-	if err != nil {
-		return nil, err
+func requestCharacter(l logrus.FieldLogger) func(characterId uint32) (*dataContainer, error) {
+	return func(characterId uint32) (*dataContainer, error) {
+		ar := &dataContainer{}
+		err := requests.Get(l)(fmt.Sprintf(charactersById, characterId), ar)
+		if err != nil {
+			return nil, err
+		}
+		return ar, nil
 	}
-	return ar, nil
 }
