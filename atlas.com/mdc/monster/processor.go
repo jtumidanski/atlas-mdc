@@ -3,13 +3,14 @@ package monster
 import (
 	"atlas-mdc/character"
 	"atlas-mdc/configuration"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"math"
 )
 
-func GetMonster(l logrus.FieldLogger) func(monsterId uint32) (*Model, bool) {
+func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(monsterId uint32) (*Model, bool) {
 	return func(monsterId uint32) (*Model, bool) {
-		resp, err := requestById(l)(monsterId)
+		resp, err := requestById(l, span)(monsterId)
 		if err != nil {
 			l.WithError(err).Errorf("Retrieving monster %d information.", monsterId)
 			return nil, false
@@ -25,17 +26,17 @@ func makeMonster(resp *MonsterDataContainer) *Model {
 	}
 }
 
-func DistributeExperience(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, m *Model, entries []*DamageEntry) {
+func DistributeExperience(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, m *Model, entries []*DamageEntry) {
 	return func(worldId byte, channelId byte, mapId uint32, m *Model, entries []*DamageEntry) {
-		d := produceDistribution(l)(mapId, m, entries)
+		d := produceDistribution(l, span)(mapId, m, entries)
 		for k, v := range d.Solo() {
 			experience := float64(v) * d.ExperiencePerDamage()
-			c, err := character.GetCharacterById(l)(k)
+			c, err := character.GetCharacterById(l, span)(k)
 			if err != nil {
 				l.WithError(err).Errorf("Unable to locate character %d whose for distributing experience from monster death.", k)
 			} else {
 				whiteExperienceGain := isWhiteExperienceGain(c.Id(), d.PersonalRatio(), d.StandardDeviationRatio())
-				distributeCharacterExperience(l)(c.Id(), c.Level(), experience, 0.0, c.Level(), true, whiteExperienceGain, false)
+				distributeCharacterExperience(l, span)(c.Id(), c.Level(), experience, 0.0, c.Level(), true, whiteExperienceGain, false)
 			}
 		}
 	}
@@ -65,7 +66,7 @@ func (d distribution) StandardDeviationRatio() float64 {
 	return d.standardDeviationRatio
 }
 
-func produceDistribution(l logrus.FieldLogger) func(mapId uint32, monster *Model, entries []*DamageEntry) distribution {
+func produceDistribution(l logrus.FieldLogger, span opentracing.Span) func(mapId uint32, monster *Model, entries []*DamageEntry) distribution {
 	return func(mapId uint32, monster *Model, entries []*DamageEntry) distribution {
 
 		totalEntries := 0
@@ -74,7 +75,7 @@ func produceDistribution(l logrus.FieldLogger) func(mapId uint32, monster *Model
 		soloDistribution := make(map[uint32]uint64)
 
 		for _, entry := range entries {
-			if character.InMap(l)(entry.CharacterId(), mapId) {
+			if character.InMap(l, span)(entry.CharacterId(), mapId) {
 				soloDistribution[entry.CharacterId()] = entry.Damage()
 			}
 			totalEntries += 1
@@ -138,7 +139,7 @@ func calculateExperienceStandardDeviationThreshold(entryExperienceRatio []float6
 	return averageExperienceReward + math.Sqrt(varExperienceReward)
 }
 
-func distributeCharacterExperience(l logrus.FieldLogger) func(characterId uint32, level byte, experience float64, partyBonusMod float64, totalPartyLevel byte, hightestPartyDamage bool, whiteExperienceGain bool, hasPartySharers bool) {
+func distributeCharacterExperience(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, level byte, experience float64, partyBonusMod float64, totalPartyLevel byte, hightestPartyDamage bool, whiteExperienceGain bool, hasPartySharers bool) {
 	return func(characterId uint32, level byte, experience float64, partyBonusMod float64, totalPartyLevel byte, hightestPartyDamage bool, whiteExperienceGain bool, hasPartySharers bool) {
 		expSplitCommonMod := configuration.Get().ExpSplitCommonMod
 		characterExperience := (float64(expSplitCommonMod) * float64(level)) / float64(totalPartyLevel)
@@ -148,15 +149,15 @@ func distributeCharacterExperience(l logrus.FieldLogger) func(characterId uint32
 		characterExperience *= experience
 		bonusExperience := partyBonusMod * characterExperience
 
-		giveExperienceToCharacter(l)(characterId, characterExperience, bonusExperience, whiteExperienceGain, hasPartySharers)
+		giveExperienceToCharacter(l, span)(characterId, characterExperience, bonusExperience, whiteExperienceGain, hasPartySharers)
 	}
 }
 
-func giveExperienceToCharacter(l logrus.FieldLogger) func(characterId uint32, experience float64, bonus float64, whiteExperienceGain bool, hasPartySharers bool) {
+func giveExperienceToCharacter(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, experience float64, bonus float64, whiteExperienceGain bool, hasPartySharers bool) {
 	return func(characterId uint32, experience float64, bonus float64, whiteExperienceGain bool, hasPartySharers bool) {
 		correctedPersonal := experienceValueToInteger(experience)
 		correctedParty := experienceValueToInteger(bonus)
-		character.GiveExperience(l)(characterId, correctedPersonal, correctedParty, true, false, whiteExperienceGain)
+		character.GiveExperience(l, span)(characterId, correctedPersonal, correctedParty, true, false, whiteExperienceGain)
 	}
 }
 

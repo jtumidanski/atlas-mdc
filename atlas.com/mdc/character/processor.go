@@ -2,13 +2,14 @@ package character
 
 import (
 	"errors"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"strconv"
 )
 
-func GetCharacterById(l logrus.FieldLogger) func(characterId uint32) (*Model, error) {
+func GetCharacterById(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32) (*Model, error) {
 	return func(characterId uint32) (*Model, error) {
-		cs, err := requestCharacter(l)(characterId)
+		cs, err := requestCharacter(l, span)(characterId)
 		if err != nil {
 			return nil, err
 		}
@@ -20,9 +21,9 @@ func GetCharacterById(l logrus.FieldLogger) func(characterId uint32) (*Model, er
 	}
 }
 
-func InMap(l logrus.FieldLogger) func(characterId uint32, mapId uint32) bool {
+func InMap(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, mapId uint32) bool {
 	return func(characterId uint32, mapId uint32) bool {
-		c, err := GetCharacterById(l)(characterId)
+		c, err := GetCharacterById(l, span)(characterId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to retrieve character for map check, assuming false.")
 			return false

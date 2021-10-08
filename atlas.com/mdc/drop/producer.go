@@ -2,6 +2,7 @@ package drop
 
 import (
 	producers "atlas-mdc/kafka/producer"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,10 +25,10 @@ type command struct {
 	Mod          byte   `json:"mod"`
 }
 
-func Spawn(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, itemId uint32, quantity uint32,
+func Spawn(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, itemId uint32, quantity uint32,
 	mesos uint32, dropType byte, x int16, y int16, ownerId uint32, ownerPartyId uint32, dropperId uint32,
 	dropperX int16, dropperY int16, playerDrop bool, mod byte) {
-	producer := producers.ProduceEvent(l, "TOPIC_SPAWN_DROP_COMMAND")
+	producer := producers.ProduceEvent(l, span, "TOPIC_SPAWN_DROP_COMMAND")
 	return func(worldId byte, channelId byte, mapId uint32, itemId uint32, quantity uint32, mesos uint32, dropType byte,
 		x int16, y int16, ownerId uint32, ownerPartyId uint32, dropperId uint32, dropperX int16, dropperY int16,
 		playerDrop bool, mod byte) {

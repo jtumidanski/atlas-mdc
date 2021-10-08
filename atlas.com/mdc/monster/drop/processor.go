@@ -3,13 +3,14 @@ package drop
 import (
 	drop2 "atlas-mdc/drop"
 	"atlas-mdc/map/point"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"math"
 	"math/rand"
 	"strconv"
 )
 
-func CreateDrops(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, monsterUniqueId uint32, monsterId uint32, x int16, y int16, killerId uint32) {
+func CreateDrops(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, monsterUniqueId uint32, monsterId uint32, x int16, y int16, killerId uint32) {
 	return func(worldId byte, channelId byte, mapId uint32, monsterUniqueId uint32, monsterId uint32, x int16, y int16, killerId uint32) {
 		// TODO determine type of drop
 		//    monster is explosive? 3
@@ -17,7 +18,7 @@ func CreateDrops(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId 
 		//    killer is in party? 1
 		dropType := byte(0)
 
-		ns, err := GetDropsForMonster(l)(monsterId)
+		ns, err := GetDropsForMonster(l, span)(monsterId)
 		if err != nil {
 			return
 		}
@@ -29,14 +30,14 @@ func CreateDrops(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId 
 		l.Debugf("Successfully found %d drops to emit.", len(ns))
 
 		for i, drop := range ns {
-			createDrop(l)(worldId, channelId, mapId, i+1, monsterUniqueId, x, y, killerId, dropType, drop)
+			createDrop(l, span)(worldId, channelId, mapId, i+1, monsterUniqueId, x, y, killerId, dropType, drop)
 		}
 	}
 }
 
-func GetDropsForMonster(l logrus.FieldLogger) func(monsterId uint32) ([]Model, error) {
+func GetDropsForMonster(l logrus.FieldLogger, span opentracing.Span) func(monsterId uint32) ([]Model, error) {
 	return func(monsterId uint32) ([]Model, error) {
-		rest, err := requestByMonsterId(l)(monsterId)
+		rest, err := requestByMonsterId(l, span)(monsterId)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +86,7 @@ func evaluateSuccess(killerId uint32, drop Model) bool {
 	return rand.Int31n(999999) < chance
 }
 
-func createDrop(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, index int, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model) {
+func createDrop(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, index int, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model) {
 	return func(worldId byte, channelId byte, mapId uint32, index int, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model) {
 		factor := 0
 		if dropType == 3 {
@@ -100,45 +101,47 @@ func createDrop(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId u
 			newX += int16(-(factor * (index / 2)))
 		}
 		if drop.ItemId() == 0 {
-			spawnMeso(l)(worldId, channelId, mapId, uniqueId, x, y, killerId, dropType, drop, newX, y)
+			spawnMeso(l, span)(worldId, channelId, mapId, uniqueId, x, y, killerId, dropType, drop, newX, y)
 		} else {
-			spawnItem(l)(worldId, channelId, mapId, drop.ItemId(), uniqueId, x, y, killerId, dropType, drop, newX, y)
+			spawnItem(l, span)(worldId, channelId, mapId, drop.ItemId(), uniqueId, x, y, killerId, dropType, drop, newX, y)
 		}
 	}
 }
 
-func spawnItem(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, itemId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
+func spawnItem(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, itemId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
 	return func(worldId byte, channelId byte, mapId uint32, itemId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
 		quantity := uint32(1)
 		if drop.MaximumQuantity() != 1 {
 			quantity = uint32(rand.Int31n(int32(drop.MaximumQuantity()-drop.MinimumQuantity()))) + drop.MinimumQuantity()
 		}
-		spawnDrop(l)(worldId, channelId, mapId, itemId, quantity, 0, posX, posY, x, y, uniqueId, killerId, false, dropType)
+		spawnDrop(l, span)(worldId, channelId, mapId, itemId, quantity, 0, posX, posY, x, y, uniqueId, killerId, false, dropType)
 	}
 }
 
-func spawnMeso(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
+func spawnMeso(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
 	return func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
 		mesos := uint32(rand.Int31n(int32(drop.MaximumQuantity()-drop.MinimumQuantity()))) + drop.MinimumQuantity()
 		//TODO apply characters meso buff.
 		mesos *= 20
-		spawnDrop(l)(worldId, channelId, mapId, 0, 0, mesos, posX, posY, x, y, uniqueId, killerId, false, dropType)
+		spawnDrop(l, span)(worldId, channelId, mapId, 0, 0, mesos, posX, posY, x, y, uniqueId, killerId, false, dropType)
 	}
 }
 
-func spawnDrop(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, itemId uint32, quantity uint32, mesos uint32, posX int16, posY int16, monsterX int16, monsterY int16, uniqueId uint32, killerId uint32, playerDrop bool, dropType byte) {
+func spawnDrop(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, itemId uint32, quantity uint32, mesos uint32, posX int16, posY int16, monsterX int16, monsterY int16, uniqueId uint32, killerId uint32, playerDrop bool, dropType byte) {
 	return func(worldId byte, channelId byte, mapId uint32, itemId uint32, quantity uint32, mesos uint32, posX int16, posY int16, monsterX int16, monsterY int16, uniqueId uint32, killerId uint32, playerDrop bool, dropType byte) {
-		tempX, tempY := calculateDropPosition(mapId, posX, posY, monsterX, monsterY)
-		tempX, tempY = calculateDropPosition(mapId, tempX, tempY, tempX, tempY)
-		drop2.Spawn(l)(worldId, channelId, mapId, itemId, quantity, mesos, dropType, tempX, tempY, killerId, 0, uniqueId, monsterX, monsterY, playerDrop, byte(1))
+		tempX, tempY := calculateDropPosition(l, span)(mapId, posX, posY, monsterX, monsterY)
+		tempX, tempY = calculateDropPosition(l, span)(mapId, tempX, tempY, tempX, tempY)
+		drop2.Spawn(l, span)(worldId, channelId, mapId, itemId, quantity, mesos, dropType, tempX, tempY, killerId, 0, uniqueId, monsterX, monsterY, playerDrop, byte(1))
 	}
 }
 
-func calculateDropPosition(mapId uint32, initialX int16, initialY int16, fallbackX int16, fallbackY int16) (int16, int16) {
-	resp, err := point.MapInformationRequests().CalculateDropPosition(mapId, initialX, initialY, fallbackX, fallbackY)
-	if err != nil {
-		return fallbackX, fallbackY
-	} else {
-		return resp.Data().Attributes.X, resp.Data().Attributes.Y
+func calculateDropPosition(l logrus.FieldLogger, span opentracing.Span) func(mapId uint32, initialX int16, initialY int16, fallbackX int16, fallbackY int16) (int16, int16) {
+	return func(mapId uint32, initialX int16, initialY int16, fallbackX int16, fallbackY int16) (int16, int16) {
+		resp, err := point.CalculateDropPosition(l, span)(mapId, initialX, initialY, fallbackX, fallbackY)
+		if err != nil {
+			return fallbackX, fallbackY
+		} else {
+			return resp.Data().Attributes.X, resp.Data().Attributes.Y
+		}
 	}
 }
