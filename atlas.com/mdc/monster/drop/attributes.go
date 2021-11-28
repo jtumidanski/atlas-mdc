@@ -2,6 +2,7 @@ package drop
 
 import (
 	"atlas-mdc/rest/response"
+	"encoding/json"
 )
 
 type MonsterDropDataContainer struct {
@@ -23,27 +24,40 @@ type MonsterDropAttributes struct {
 	Chance          uint32 `json:"chance"`
 }
 
-func (a *MonsterDropDataContainer) UnmarshalJSON(data []byte) error {
+func (c *MonsterDropDataContainer) MarshalJSON() ([]byte, error) {
+	t := struct {
+		Data     interface{} `json:"data"`
+		Included interface{} `json:"included"`
+	}{}
+	if len(c.data) == 1 {
+		t.Data = c.data[0]
+	} else {
+		t.Data = c.data
+	}
+	return json.Marshal(t)
+}
+
+func (c *MonsterDropDataContainer) UnmarshalJSON(data []byte) error {
 	d, i, err := response.UnmarshalRoot(data, response.MapperFunc(EmptyMonsterDropData))
 	if err != nil {
 		return err
 	}
 
-	a.data = d
-	a.included = i
+	c.data = d
+	c.included = i
 	return nil
 }
 
-func (a *MonsterDropDataContainer) Data() *MonsterDropData {
-	if len(a.data) >= 1 {
-		return a.data[0].(*MonsterDropData)
+func (c *MonsterDropDataContainer) Data() *MonsterDropData {
+	if len(c.data) >= 1 {
+		return c.data[0].(*MonsterDropData)
 	}
 	return nil
 }
 
-func (a *MonsterDropDataContainer) DataList() []MonsterDropData {
+func (c *MonsterDropDataContainer) DataList() []MonsterDropData {
 	var r = make([]MonsterDropData, 0)
-	for _, x := range a.data {
+	for _, x := range c.data {
 		r = append(r, *x.(*MonsterDropData))
 	}
 	return r

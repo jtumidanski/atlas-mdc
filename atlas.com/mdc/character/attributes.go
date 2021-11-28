@@ -1,9 +1,13 @@
 package character
 
-import "atlas-mdc/rest/response"
+import (
+	"atlas-mdc/rest/response"
+	"encoding/json"
+)
 
 type dataContainer struct {
-	data response.DataSegment
+	data     response.DataSegment
+	included response.DataSegment
 }
 
 type dataBody struct {
@@ -43,6 +47,19 @@ type attributes struct {
 	X                  int16  `json:"x"`
 	Y                  int16  `json:"y"`
 	Stance             byte   `json:"stance"`
+}
+
+func (c *dataContainer) MarshalJSON() ([]byte, error) {
+	t := struct {
+		Data     interface{} `json:"data"`
+		Included interface{} `json:"included"`
+	}{}
+	if len(c.data) == 1 {
+		t.Data = c.data[0]
+	} else {
+		t.Data = c.data
+	}
+	return json.Marshal(t)
 }
 
 func (c *dataContainer) UnmarshalJSON(data []byte) error {

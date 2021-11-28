@@ -27,17 +27,11 @@ func CalculateDropPosition(l logrus.FieldLogger, span opentracing.Span) func(map
 				FallbackY: fallbackY,
 			},
 		}}
-		resp, err := requests.Post(l, span)(fmt.Sprintf(dropPosition, mapId), input)
-		if err != nil {
-			return nil, err
-		}
-
 		ar := &MapPointDataContainer{}
-		err = requests.ProcessResponse(resp, ar)
+		err := requests.Post(l, span)(fmt.Sprintf(dropPosition, mapId), input, ar, &requests.ErrorListDataContainer{})
 		if err != nil {
 			return nil, err
 		}
-
 		return ar, nil
 	}
 }
