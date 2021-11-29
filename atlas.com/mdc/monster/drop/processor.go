@@ -3,6 +3,7 @@ package drop
 import (
 	drop2 "atlas-mdc/drop"
 	"atlas-mdc/map/point"
+	"fmt"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -27,7 +28,14 @@ func CreateDrops(l logrus.FieldLogger, span opentracing.Span) func(worldId byte,
 
 		ns = getSuccessfulDrops(ns, killerId)
 
-		l.Debugf("Successfully found %d drops to emit.", len(ns))
+		ids := ""
+		for _, n := range ns {
+			if len(ids) != 0 {
+				ids += ","
+			}
+			ids += fmt.Sprintf("[%d, %d]", n.ItemId(), n.Chance())
+		}
+		l.Debugf("Successfully found %d drops to emit. %s", len(ns), ids)
 
 		for i, drop := range ns {
 			createDrop(l, span)(worldId, channelId, mapId, i+1, monsterUniqueId, x, y, killerId, dropType, drop)
