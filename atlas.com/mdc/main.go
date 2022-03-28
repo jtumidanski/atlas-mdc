@@ -1,8 +1,9 @@
 package main
 
 import (
-	"atlas-mdc/kafka/consumers"
+	"atlas-mdc/kafka"
 	"atlas-mdc/logger"
+	"atlas-mdc/monster"
 	"atlas-mdc/tracing"
 	"context"
 	"io"
@@ -13,6 +14,7 @@ import (
 )
 
 const serviceName = "atlas-mdc"
+const consumerGroupId = "Monster Death Coordinator"
 
 func main() {
 	l := logger.CreateLogger(serviceName)
@@ -32,7 +34,8 @@ func main() {
 		}
 	}(tc)
 
-	consumers.CreateEventConsumers(l, ctx, wg)
+	kafka.CreateConsumers(l, ctx, wg,
+		monster.DeathConsumer(consumerGroupId))
 
 	// trap sigterm or interrupt and gracefully shutdown the server
 	c := make(chan os.Signal, 1)

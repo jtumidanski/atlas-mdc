@@ -1,7 +1,7 @@
 package character
 
 import (
-	"atlas-mdc/kafka/producer"
+	"atlas-mdc/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 )
@@ -16,9 +16,9 @@ type characterExperienceGainEvent struct {
 }
 
 func GiveExperience(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, personalGain uint32, partyGain uint32, show bool, chat bool, white bool) {
-	producer := producers.ProduceEvent(l, span, "TOPIC_CHARACTER_EXPERIENCE_EVENT")
+	producer := kafka.ProduceEvent(l, span, "TOPIC_CHARACTER_EXPERIENCE_EVENT")
 	return func(characterId uint32, personalGain uint32, partyGain uint32, show bool, chat bool, white bool) {
 		event := &characterExperienceGainEvent{characterId, personalGain, partyGain, show, chat, white}
-		producer(producers.CreateKey(int(characterId)), event)
+		producer(kafka.CreateKey(int(characterId)), event)
 	}
 }
