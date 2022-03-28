@@ -45,7 +45,7 @@ func CreateDrops(l logrus.FieldLogger, span opentracing.Span) func(worldId byte,
 
 func GetDropsForMonster(l logrus.FieldLogger, span opentracing.Span) func(monsterId uint32) ([]Model, error) {
 	return func(monsterId uint32) ([]Model, error) {
-		rest, err := requestByMonsterId(l, span)(monsterId)
+		rest, err := requestByMonsterId(monsterId)(l, span)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func GetDropsForMonster(l logrus.FieldLogger, span opentracing.Span) func(monste
 	}
 }
 
-func makeDrop(id uint32, att MonsterDropAttributes) Model {
+func makeDrop(id uint32, att attributes) Model {
 	return Model{
 		monsterId:       att.MonsterId,
 		itemId:          att.ItemId,

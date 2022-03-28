@@ -1,6 +1,7 @@
 package character
 
 import (
+	"atlas-mdc/rest/requests"
 	"errors"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
@@ -9,7 +10,7 @@ import (
 
 func GetCharacterById(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32) (*Model, error) {
 	return func(characterId uint32) (*Model, error) {
-		cs, err := requestCharacter(l, span)(characterId)
+		cs, err := requestCharacter(characterId)(l, span)
 		if err != nil {
 			return nil, err
 		}
@@ -32,7 +33,7 @@ func InMap(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32,
 	}
 }
 
-func makeCharacterAttributes(ca *dataBody) *Model {
+func makeCharacterAttributes(ca requests.DataBody[attributes]) *Model {
 	cid, err := strconv.ParseUint(ca.Id, 10, 32)
 	if err != nil {
 		return nil

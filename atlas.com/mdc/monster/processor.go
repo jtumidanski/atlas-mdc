@@ -3,6 +3,7 @@ package monster
 import (
 	"atlas-mdc/character"
 	"atlas-mdc/configuration"
+	"atlas-mdc/rest/requests"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -10,19 +11,20 @@ import (
 
 func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(monsterId uint32) (*Model, bool) {
 	return func(monsterId uint32) (*Model, bool) {
-		resp, err := requestById(l, span)(monsterId)
+		resp, err := requestById(monsterId)(l, span)
 		if err != nil {
 			l.WithError(err).Errorf("Retrieving monster %d information.", monsterId)
 			return nil, false
 		}
-		return makeMonster(resp), true
+		return makeMonster(resp.Data()), true
 	}
 }
 
-func makeMonster(resp *MonsterDataContainer) *Model {
+func makeMonster(resp requests.DataBody[MonsterAttributes]) *Model {
+	attr := resp.Attributes
 	return &Model{
-		experience: resp.Data.Attributes.Experience,
-		hp:         resp.Data.Attributes.HP,
+		experience: attr.Experience,
+		hp:         attr.HP,
 	}
 }
 

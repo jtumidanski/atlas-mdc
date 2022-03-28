@@ -1,19 +1,5 @@
 package monster
 
-type MonsterDataContainer struct {
-	Data MonsterData `json:"data"`
-}
-
-type MonsterDataListContainer struct {
-	Data []MonsterData `json:"data"`
-}
-
-type MonsterData struct {
-	Id         string            `json:"id"`
-	Type       string            `json:"type"`
-	Attributes MonsterAttributes `json:"attributes"`
-}
-
 type MonsterAttributes struct {
 	Name               string            `json:"name"`
 	HP                 uint32            `json:"hp"`
