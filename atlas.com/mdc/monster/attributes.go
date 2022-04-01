@@ -1,6 +1,6 @@
 package monster
 
-type MonsterAttributes struct {
+type attributes struct {
 	Name               string            `json:"name"`
 	HP                 uint32            `json:"hp"`
 	MP                 uint32            `json:"mp"`

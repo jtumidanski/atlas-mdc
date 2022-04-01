@@ -35,7 +35,7 @@ type killedEvent struct {
 
 func HandleMonsterKilledEvent() kafka.HandlerFunc[killedEvent] {
 	return func(l logrus.FieldLogger, span opentracing.Span, event killedEvent) {
-		if m, ok := GetMonster(l, span)(event.MonsterId); ok {
+		if m, err := GetMonster(l, span)(event.MonsterId); err == nil {
 			var damageEntries = make([]*DamageEntry, 0)
 			for _, entry := range event.DamageEntries {
 				damageEntries = append(damageEntries, NewDamageEntry(entry.CharacterId, entry.Damage))

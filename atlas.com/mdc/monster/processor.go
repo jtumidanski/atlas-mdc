@@ -9,31 +9,26 @@ import (
 	"math"
 )
 
-func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(monsterId uint32) (*Model, bool) {
-	return func(monsterId uint32) (*Model, bool) {
-		resp, err := requestById(monsterId)(l, span)
-		if err != nil {
-			l.WithError(err).Errorf("Retrieving monster %d information.", monsterId)
-			return nil, false
-		}
-		return makeMonster(resp.Data()), true
+func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(monsterId uint32) (Model, error) {
+	return func(monsterId uint32) (Model, error) {
+		return requests.Provider[attributes, Model](l, span)(requestById(monsterId), makeModel)()
 	}
 }
 
-func makeMonster(resp requests.DataBody[MonsterAttributes]) *Model {
+func makeModel(resp requests.DataBody[attributes]) (Model, error) {
 	attr := resp.Attributes
-	return &Model{
+	return Model{
 		experience: attr.Experience,
 		hp:         attr.HP,
-	}
+	}, nil
 }
 
-func DistributeExperience(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, m *Model, entries []*DamageEntry) {
-	return func(worldId byte, channelId byte, mapId uint32, m *Model, entries []*DamageEntry) {
+func DistributeExperience(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, m Model, entries []*DamageEntry) {
+	return func(worldId byte, channelId byte, mapId uint32, m Model, entries []*DamageEntry) {
 		d := produceDistribution(l, span)(mapId, m, entries)
 		for k, v := range d.Solo() {
 			experience := float64(v) * d.ExperiencePerDamage()
-			c, err := character.GetCharacterById(l, span)(k)
+			c, err := character.GetById(l, span)(k)
 			if err != nil {
 				l.WithError(err).Errorf("Unable to locate character %d whose for distributing experience from monster death.", k)
 			} else {
@@ -68,8 +63,8 @@ func (d distribution) StandardDeviationRatio() float64 {
 	return d.standardDeviationRatio
 }
 
-func produceDistribution(l logrus.FieldLogger, span opentracing.Span) func(mapId uint32, monster *Model, entries []*DamageEntry) distribution {
-	return func(mapId uint32, monster *Model, entries []*DamageEntry) distribution {
+func produceDistribution(l logrus.FieldLogger, span opentracing.Span) func(mapId uint32, monster Model, entries []*DamageEntry) distribution {
+	return func(mapId uint32, monster Model, entries []*DamageEntry) distribution {
 
 		totalEntries := 0
 		//TODO incorporate party distribution.

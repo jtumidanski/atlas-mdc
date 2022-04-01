@@ -3,6 +3,7 @@ package drop
 import (
 	drop2 "atlas-mdc/drop"
 	"atlas-mdc/map/point"
+	"atlas-mdc/rest/requests"
 	"fmt"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
@@ -45,32 +46,23 @@ func CreateDrops(l logrus.FieldLogger, span opentracing.Span) func(worldId byte,
 
 func GetDropsForMonster(l logrus.FieldLogger, span opentracing.Span) func(monsterId uint32) ([]Model, error) {
 	return func(monsterId uint32) ([]Model, error) {
-		rest, err := requestByMonsterId(monsterId)(l, span)
-		if err != nil {
-			return nil, err
-		}
-
-		ns := make([]Model, 0)
-		for _, drop := range rest.DataList() {
-			id, err := strconv.ParseUint(drop.Id, 10, 32)
-			if err != nil {
-				break
-			}
-			n := makeDrop(uint32(id), drop.Attributes)
-			ns = append(ns, n)
-		}
-		return ns, nil
+		return requests.SliceProvider[attributes, Model](l, span)(requestByMonsterId(monsterId), makeDrop)()
 	}
 }
 
-func makeDrop(id uint32, att attributes) Model {
-	return Model{
-		monsterId:       att.MonsterId,
-		itemId:          att.ItemId,
-		minimumQuantity: att.MinimumQuantity,
-		maximumQuantity: att.MaximumQuantity,
-		chance:          att.Chance,
+func makeDrop(body requests.DataBody[attributes]) (Model, error) {
+	_, err := strconv.ParseUint(body.Id, 10, 32)
+	if err != nil {
+		return Model{}, err
 	}
+	attr := body.Attributes
+	return Model{
+		monsterId:       attr.MonsterId,
+		itemId:          attr.ItemId,
+		minimumQuantity: attr.MinimumQuantity,
+		maximumQuantity: attr.MaximumQuantity,
+		chance:          attr.Chance,
+	}, nil
 }
 
 func getSuccessfulDrops(ns []Model, killerId uint32) []Model {
@@ -149,7 +141,8 @@ func calculateDropPosition(l logrus.FieldLogger, span opentracing.Span) func(map
 		if err != nil {
 			return fallbackX, fallbackY
 		} else {
-			return resp.Data().Attributes.X, resp.Data().Attributes.Y
+			attr := resp.Data().Attributes
+			return attr.X, attr.Y
 		}
 	}
 }
