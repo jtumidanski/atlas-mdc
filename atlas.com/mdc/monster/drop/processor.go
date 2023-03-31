@@ -112,7 +112,7 @@ func spawnItem(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, c
 	return func(worldId byte, channelId byte, mapId uint32, itemId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
 		quantity := uint32(1)
 		if drop.MaximumQuantity() != 1 {
-			quantity = uint32(rand.Int31n(int32(drop.MaximumQuantity()-drop.MinimumQuantity()))) + drop.MinimumQuantity()
+			quantity = uint32(rand.Int31n(int32(drop.MaximumQuantity()-drop.MinimumQuantity())+1)) + drop.MinimumQuantity()
 		}
 		spawnDrop(l, span)(worldId, channelId, mapId, itemId, quantity, 0, posX, posY, x, y, uniqueId, killerId, false, dropType)
 	}
@@ -120,7 +120,7 @@ func spawnItem(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, c
 
 func spawnMeso(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
 	return func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, x int16, y int16, killerId uint32, dropType byte, drop Model, posX int16, posY int16) {
-		mesos := uint32(rand.Int31n(int32(drop.MaximumQuantity()-drop.MinimumQuantity()))) + drop.MinimumQuantity()
+		mesos := uint32(rand.Int31n(int32(drop.MaximumQuantity()-drop.MinimumQuantity())+1)) + drop.MinimumQuantity()
 		//TODO apply characters meso buff.
 		mesos *= 20
 		spawnDrop(l, span)(worldId, channelId, mapId, 0, 0, mesos, posX, posY, x, y, uniqueId, killerId, false, dropType)
